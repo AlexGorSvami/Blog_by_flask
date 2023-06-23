@@ -1,10 +1,20 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, flash, session, request, redirect
 from flask_bootstrap import Bootstrap
+import  yaml, os
+from flask_mysqldb import MySQL
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 Bootstrap(app)
 
-@app.route('/')
+db = yaml.full_load(open('db.yaml'))
+app.config['MYSQL_HOST'] = db['mysql_host']
+app.config['MYSQL_USER'] = db['mysql_user']
+app.config['MYSQL_PASSWORD'] = db['mysql_password']
+app.config['MYSQL_DB'] = db['mysql_db']
+app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
+app.config['SECRET_KEY'] = os.urandom(24)
+mysql = MySQL(app)
 def index():
     return render_template('index.html')
 
@@ -39,8 +49,21 @@ def edit_blog(id):
 def delete_blog(id):
     return 'Deleted successfully'
 
-@app.route('/register/',  methods=['POST', 'GET'])
+@app.route('/register/',  methods=['GET',  'POST'])
 def register():
+    if request.method == 'POST':
+        user_inform = request.form
+        if user_inform['password'] != user_inform['confirmPassword']:
+            flash("Passwords don't match! Try again!", 'danger')
+            return render_template('register.html')
+        cursor = mysql.connection.cursor()
+        cursor.execute("INSERT INTO user(first_name, last_name, username, email, password) VALUES (%s, %s, %s, %s, %s)",
+        (user_inform['firstname'], user_inform['lastname'], user_inform['username'], user_inform['email'],
+        generate_password_hash(user_inform['password'])))
+        mysql.connection.commit()
+        cursor.close()
+        flash('Registration successful! Please enter your login!', 'success')
+        return redirect('/login/')
     return render_template('register.html')
 
 
