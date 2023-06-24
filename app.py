@@ -60,7 +60,7 @@ def login():
         return redirect('/')
     return render_template('login.html')
 
-@app.route('/logout')
+@app.route('/logout/')
 def logout():
     return render_template('logout.html')
 
