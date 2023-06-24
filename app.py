@@ -1,12 +1,15 @@
 import os
+
 import yaml
 from flask import Flask, render_template, flash, session, request, redirect
 from flask_bootstrap import Bootstrap
 from flask_mysqldb import MySQL
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_ckeditor import CKEditor
 
 app = Flask(__name__)
 Bootstrap(app)
+CKEditor(app)
 
 db = yaml.full_load(open('db.yaml'))
 app.config['MYSQL_HOST'] = db['mysql_host']
@@ -18,7 +21,13 @@ app.config['SECRET_KEY'] = os.urandom(24)
 mysql = MySQL(app)
 @app.route('/')
 def index():
-    return render_template('index.html')
+    cursor = mysql.connection.cursor()
+    result_value = cursor.execute('SELECT * FROM blog')
+    if result_value > 0:
+        blogs = cursor.fetchall()
+        cursor.close()
+        return render_template('index.html', blogs=blogs)
+    return render_template('index.html', blogs=None)
 
 @app.route('/about/')
 def about():
@@ -55,8 +64,20 @@ def login():
 def logout():
     return render_template('logout.html')
 
-@app.route('/write-blog/', methods=['GET','POST'])
+
+@app.route('/write-blog/', methods=['GET', 'POST'])
 def write_blog():
+    if request.method == 'POST':
+        blogpost = request.form
+        title = blogpost['title']
+        body = blogpost['body']
+        author = f"{session['first_name']} {session['last_name']}"
+        cursor = mysql.connection.cursor()
+        cursor.execute("INSERT INTO blog (title, body, author) VALUES (%s, %s, %s)", (title, body, author))
+        mysql.connection.commit()
+        cursor.close()
+        flash('Your post is successfully saved', 'success')
+        return redirect('/')
     return render_template('write-blog.html')
 
 @app.route('/my-blogs/')
@@ -64,7 +85,12 @@ def my_blogs():
     return render_template('my-blogs.html')
 @app.route('/blogs/<int:id>')
 def blogs(id):
-    return render_template('blogs.html', blog_id=id)
+    cursor = mysql.connection.cursor()
+    result_value = cursor.execute("SELECT * FROM blog WHERE blog_id = {}".format(id))
+    if result_value > 0:
+        blog = cursor.fetchone()
+        return render_template('blogs.html', blog=blog)
+    return 'Blog is not found'
 
 @app.route('/edit-blog/<int:id>', methods=['GET', 'POST'])
 def edit_blog(id):
