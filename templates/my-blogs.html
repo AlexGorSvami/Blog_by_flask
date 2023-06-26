@@ -1,4 +1,19 @@
 {% extends 'base.html' %}
 {% block sub_content %}
-<h1>My Blogs</h1>
+{% if my_blogs %}
+<table cellpadding="5">
+    {% for my_blog in my_blogs %}
+    <tr>
+        <td style="padding: 0 15px;"><h2><a href="/blogs/{{ my_blog['blog_id'] }}">{{ my_blog['title'] }}</a></h2></td>
+        <td style="padding: 0 15px;"><h2><a href="/edit-blog/{{ my_blog['blog_id'] }}" class="btn btn-primary">Edit</a>
+        </h2></td>
+        <td style="padding: 0 15px;"><h2><a href="/delete-blog/{{ my_blog['blog_id'] }}"
+                                            class="btn btn-danger">Delete</a></h2></td>
+
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<h2>No blogs </h2>>
+{% endif %}
 {% endblock %}

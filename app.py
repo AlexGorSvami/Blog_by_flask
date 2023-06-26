@@ -3,9 +3,9 @@ import os
 import yaml
 from flask import Flask, render_template, flash, session, request, redirect
 from flask_bootstrap import Bootstrap
+from flask_ckeditor import CKEditor
 from flask_mysqldb import MySQL
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_ckeditor import CKEditor
 
 app = Flask(__name__)
 Bootstrap(app)
@@ -62,7 +62,9 @@ def login():
 
 @app.route('/logout/')
 def logout():
-    return render_template('logout.html')
+    session.clear()
+    flash('You have been logged  out!', 'info')
+    return render_template("/index.html/")
 
 
 @app.route('/write-blog/', methods=['GET', 'POST'])
@@ -80,9 +82,19 @@ def write_blog():
         return redirect('/')
     return render_template('write-blog.html')
 
+
 @app.route('/my-blogs/')
 def my_blogs():
-    return render_template('my-blogs.html')
+    author = f"{session['first_name']} {session['last_name']}"
+    cursor = mysql.connection.cursor()
+    result_value = cursor.execute("SELECT * FROM blog WHERE author = %s", [author])
+    if result_value > 0:
+        my_blogs = cursor.fetchall()
+        return render_template('my-blogs.html', my_blogs=my_blogs)
+    else:
+        return render_template('my-blogs.html', my_blogs=None)
+
+
 @app.route('/blogs/<int:id>')
 def blogs(id):
     cursor = mysql.connection.cursor()
@@ -92,13 +104,35 @@ def blogs(id):
         return render_template('blogs.html', blog=blog)
     return 'Blog is not found'
 
+
 @app.route('/edit-blog/<int:id>', methods=['GET', 'POST'])
 def edit_blog(id):
-    return render_template('edit-blog.html', blog_id=id)
+    if request.method == 'POST':
+        cursor = mysql.connection.cursor()
+        title = request.form['title']
+        body = request.form['body']
+        cursor.execute("UPDATE blog SET title = %s, body = %s WHERE blog_id = %s", (title, body, id))
+        mysql.connection.commit()
+        cursor.close()
+        flash('Blog is updated!', 'success')
+        return redirect(f'/blogs/{id}')
+    cursor = mysql.connection.cursor()
+    result_value = cursor.execute(f"SELECT * FROM blog WHERE blog_id = {id}")
+    if result_value > 0:
+        blog = cursor.fetchone()
+        blog_form = {}
+        blog_form['title'] = blog['title']
+        blog_form['body'] = blog['body']
+        return render_template('edit-blog.html', blog_form=blog_form)
 
-@app.route('/delete-blog/', methods=['POST'])
+
+@app.route('/delete-blog/<int:id>')
 def delete_blog(id):
-    return 'Deleted successfully'
+    cursor = mysql.connection.cursor()
+    cursor.execute(f"DELETE FROM blog WHERE blog_id = {id}")
+    mysql.connection.commit()
+    flash('Your blog is deleted!', 'success')
+    return redirect('/my-blogs/')
 
 @app.route('/register/',  methods=['GET',  'POST'])
 def register():
