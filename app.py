@@ -64,7 +64,7 @@ def login():
 def logout():
     session.clear()
     flash('You have been logged  out!', 'info')
-    return render_template("/index.html/")
+    return redirect('/')
 
 
 @app.route('/write-blog/', methods=['GET', 'POST'])
@@ -98,7 +98,7 @@ def my_blogs():
 @app.route('/blogs/<int:id>')
 def blogs(id):
     cursor = mysql.connection.cursor()
-    result_value = cursor.execute("SELECT * FROM blog WHERE blog_id = {}".format(id))
+    result_value = cursor.execute(f"SELECT * FROM blog WHERE blog_id = {id}")
     if result_value > 0:
         blog = cursor.fetchone()
         return render_template('blogs.html', blog=blog)
@@ -111,7 +111,7 @@ def edit_blog(id):
         cursor = mysql.connection.cursor()
         title = request.form['title']
         body = request.form['body']
-        cursor.execute("UPDATE blog SET title = %s, body = %s WHERE blog_id = %s", (title, body, id))
+        cursor.execute(f"UPDATE blog SET title = {title}, body = {body} WHERE blog_id = {id}")
         mysql.connection.commit()
         cursor.close()
         flash('Blog is updated!', 'success')
@@ -134,7 +134,7 @@ def delete_blog(id):
     flash('Your blog is deleted!', 'success')
     return redirect('/my-blogs/')
 
-@app.route('/register/',  methods=['GET',  'POST'])
+@app.route('/register/',  methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         user_inform = request.form
@@ -143,8 +143,10 @@ def register():
             return render_template('register.html')
         cursor = mysql.connection.cursor()
         cursor.execute("INSERT INTO user(first_name, last_name, username, email, password) VALUES (%s, %s, %s, %s, %s)",
-        (user_inform['firstname'], user_inform['lastname'], user_inform['username'], user_inform['email'],
-        generate_password_hash(user_inform['password'])))
+                       (
+                           user_inform['firstname'], user_inform['lastname'], user_inform['username'],
+                           user_inform['email'],
+                           generate_password_hash(user_inform['password'])))
         mysql.connection.commit()
         cursor.close()
         flash('Registration successful! Please enter your login!', 'success')
@@ -152,6 +154,7 @@ def register():
     return render_template('register.html')
 
 
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
 
